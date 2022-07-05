@@ -11,10 +11,10 @@ public class UserDaoJDBCImpl implements UserDao {
 
     public UserDaoJDBCImpl() {
     }
-
+    private static final Connection connection = Util.getConnection();
     public void createUsersTable() {
-        try (Connection connection = Util.getConnection()){
-            Statement statement = connection.createStatement();
+        try (Statement statement = connection.createStatement()){
+
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS `new_schema`.`user` (
                       `id` INT NOT NULL AUTO_INCREMENT,
@@ -30,21 +30,21 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void dropUsersTable() {
-        String sql = "DROP TABLE IF EXISTS `new_schema`.`user`";
-        try (Connection connection = Util.getConnection()){
-            Statement statement = connection.createStatement();
-            statement.executeUpdate(sql);
+        try (Statement statement = connection.createStatement()){
+            statement.executeUpdate("DROP TABLE IF EXISTS `new_schema`.`user`");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
     public void saveUser(String name, String lastName, byte age) {
-        String form = "INSERT INTO `new_schema`.`user`(name, lastname, age) VALUES ('%s', '%s', '%d')";
-        try (Connection connection = Util.getConnection()){
-            Statement statement = connection.createStatement();
-            String sql = String.format(form, name, lastName, age);
-            statement.executeUpdate(sql);
+        final String form = "INSERT INTO `new_schema`.`user`(name, lastname, age) VALUES (?, ?, ?)";
+//        final String sql = String.format(form, name, lastName, age);
+        try (PreparedStatement preparedStatement = connection.prepareStatement(form)) {
+            preparedStatement.setString(1, name);
+            preparedStatement.setString(2, lastName);
+            preparedStatement.setByte(3, age);
+            preparedStatement.executeUpdate();
             System.out.println("User с именем – " + name + " добавлен в базу данных");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -52,10 +52,9 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void removeUserById(long id) {
-        String sql = "DELETE FROM `new_schema`.`user` where id";
-        try (Connection connection = Util.getConnection()){
-            Statement statement = connection.createStatement();
-            statement.executeUpdate(sql);
+        try (PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM `new_schema`.`user` where id")) {
+            preparedStatement.setLong(1, id);
+            preparedStatement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -63,11 +62,9 @@ public class UserDaoJDBCImpl implements UserDao {
 
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT id, name, lastName, age from `new_schema`.`user`";
 
-        try (Connection connection = Util.getConnection()){
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
+        try (Statement statement = connection.createStatement()){
+            ResultSet resultSet = statement.executeQuery("SELECT id, name, lastName, age from `new_schema`.`user`");
 
             while (resultSet.next()) {
                 User user = new User();
@@ -85,8 +82,7 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void cleanUsersTable() {
-        try (Connection connection = Util.getConnection()){
-            Statement statement = connection.createStatement();
+        try (Statement statement = connection.createStatement()){
             statement.executeUpdate("TRUNCATE `new_schema`.`user`;");
         } catch (SQLException e) {
             e.printStackTrace();
